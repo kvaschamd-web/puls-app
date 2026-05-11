@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Пульс — Щоденник тиску</title>
+
+<!-- PWA meta -->
+<meta name="application-name" content="Пульс">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Пульс">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d0f14">
+
+<!-- Icons -->
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+
+<!-- Manifest -->
+<link rel="manifest" href="manifest.json">
+
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #141720;
+    --surface2: #1c2030;
+    --border: #252a3a;
+    --text: #e8eaf2;
+    --text-muted: #6b7394;
+    --text-dim: #3d4460;
+    --accent: #e05c5c;
+    --accent2: #5c8fe0;
+    --accent3: #5ce0b0;
+    --accent-glow: rgba(224, 92, 92, 0.15);
+    --good: #5ce0b0;
+    --warn: #e0c05c;
+    --danger: #e05c5c;
+    --critical: #e05c8a;
+    --radius: 16px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    top: -200px; right: -200px;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(224,92,92,0.06) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 20px 16px 100px; }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 0 28px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .logo-icon {
+    width: 32px; height: 32px;
+    position: relative;
+  }
+
+  .logo-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+
+  .logo-title span { color: var(--accent); }
+
+  .header-date {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: right;
+    line-height: 1.5;
+  }
+
+  /* Status card */
+  .status-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .status-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+
+  .status-label {
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  .bp-display {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+
+  .bp-value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 64px;
+    line-height: 1;
+    color: var(--text);
+    letter-spacing: -2px;
+  }
+
+  .bp-sep {
+    font-family: 'DM Mono', monospace;
+    font-size: 32px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+
+  .bp-unit {
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    padding-left: 4px;
+  }
+
+  .bp-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .bp-pulse {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .pulse-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse-beat 1.2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-beat {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.4); opacity: 0.7; }
+  }
+
+  .bp-status-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  .badge-optimal { background: rgba(92,224,176,0.12); color: var(--good); border: 1px solid rgba(92,224,176,0.2); }
+  .badge-normal { background: rgba(92,143,224,0.12); color: var(--accent2); border: 1px solid rgba(92,143,224,0.2); }
+  .badge-elevated { background: rgba(224,192,92,0.12); color: var(--warn); border: 1px solid rgba(224,192,92,0.2); }
+  .badge-high { background: rgba(224,92,92,0.12); color: var(--danger); border: 1px solid rgba(224,92,92,0.2); }
+  .badge-critical { background: rgba(224,92,138,0.12); color: var(--critical); border: 1px solid rgba(224,92,138,0.2); }
+
+  /* Mini chart */
+  .chart-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .chart-legend {
+    display: flex;
+    gap: 12px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text-muted);
+  }
+
+  .legend-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+  }
+
+  .chart-wrap {
+    position: relative;
+    height: 100px;
+  }
+
+  canvas#chartCanvas {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Stats row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    text-align: center;
+  }
+
+  .stat-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 20px;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+  }
+
+  /* Add form */
+  .add-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .input-wrap {
+    position: relative;
+  }
+
+  .input-label {
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  input[type="number"], input[type="text"], textarea, select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 18px;
+    font-weight: 500;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input[type="number"]:focus, input[type="text"]:focus, textarea:focus, select:focus {
+    border-color: var(--accent);
+  }
+
+  input[type="number"] { text-align: center; -moz-appearance: textfield; }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  .note-wrap { grid-column: 1 / -1; }
+
+  textarea {
+    font-size: 13px;
+    resize: none;
+    height: 60px;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  /* Feelings */
+  .feelings-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+
+  .feeling-btn {
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .feeling-btn:hover { border-color: var(--accent); color: var(--text); }
+  .feeling-btn.active { background: var(--accent-glow); border-color: var(--accent); color: var(--accent); }
+
+  .add-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: white;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    letter-spacing: 0.5px;
+  }
+
+  .add-btn:hover { opacity: 0.9; }
+  .add-btn:active { transform: scale(0.99); }
+
+  /* Records */
+  .records-section { margin-bottom: 20px; }
+
+  .record-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: border-color 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .record-item::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+  }
+
+  .record-item:hover { border-color: var(--border); }
+
+  .record-time {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    min-width: 44px;
+    text-align: center;
+    line-height: 1.4;
+  }
+
+  .record-bp {
+    flex: 1;
+  }
+
+  .record-values {
+    font-family: 'DM Mono', monospace;
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: -0.5px;
+    margin-bottom: 3px;
+  }
+
+  .record-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .record-note {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-top: 2px;
+  }
+
+  .record-delete {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: color 0.15s;
+    line-height: 1;
+  }
+
+  .record-delete:hover { color: var(--accent); }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+  }
+
+  .empty-icon { font-size: 36px; margin-bottom: 10px; opacity: 0.4; }
+  .empty-text { font-size: 13px; line-height: 1.5; }
+
+  /* Bottom nav */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+    z-index: 100;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px;
+    cursor: pointer;
+    transition: color 0.15s;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.5px;
+    border: none;
+    background: none;
+  }
+
+  .nav-item.active { color: var(--accent); }
+
+  .nav-icon { font-size: 20px; line-height: 1; }
+
+  /* Tabs content */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Advice cards */
+  .advice-grid {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .advice-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .advice-icon { font-size: 24px; line-height: 1; flex-shrink: 0; }
+
+  .advice-title {
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  .advice-text {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* BP reference table */
+  .bp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .bp-table th {
+    text-align: left;
+    color: var(--text-muted);
+    font-weight: 400;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .bp-table td {
+    padding: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+
+  .bp-table tr:last-child td { border-bottom: none; }
+
+  .color-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+  }
+
+  /* Animations */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .record-item { animation: fadeIn 0.25s ease; }
+
+  /* Reminder section */
+  .reminder-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .toggle-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .toggle-row:last-child { border-bottom: none; }
+
+  .toggle-label { font-size: 13px; }
+  .toggle-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+  .toggle {
+    width: 40px; height: 22px;
+    background: var(--border);
+    border-radius: 11px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+
+  .toggle.on { background: var(--accent); }
+
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 16px; height: 16px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s;
+  }
+
+  .toggle.on::after { transform: translateX(18px); }
+
+  /* Export btn */
+  .export-btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    transition: border-color 0.15s;
+  }
+
+  .export-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* Pulse ECG animation on header */
+  .ecg-line {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 40px;
+    opacity: 0.05;
+    overflow: hidden;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  select {
+    font-size: 13px;
+    padding: 8px 10px;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 10px 20px;
+    font-size: 13px;
+    opacity: 0;
+    transition: all 0.25s;
+    z-index: 200;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <div class="logo">
+      <svg class="logo-icon" viewBox="0 0 32 32" fill="none">
+        <path d="M16 4C16 4 6 10 6 18C6 23.5 10.5 28 16 28C21.5 28 26 23.5 26 18C26 10 16 4 16 4Z" fill="rgba(224,92,92,0.15)" stroke="#e05c5c" stroke-width="1.5"/>
+        <path d="M10 18 L13 14 L16 20 L19 12 L22 18" stroke="#e05c5c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+      <span class="logo-title">Пул<span>ьс</span></span>
+    </div>
+    <div class="header-date" id="headerDate"></div>
+  </div>
+
+  <!-- HOME TAB -->
+  <div class="tab-content active" id="tab-home">
+
+    <!-- Last reading status -->
+    <div class="status-card" id="statusCard">
+      <div class="status-label">Останній вимір</div>
+      <div class="bp-display">
+        <span class="bp-value" id="lastSys">—</span>
+        <span class="bp-sep">/</span>
+        <span class="bp-value" id="lastDia">—</span>
+        <div class="bp-unit">мм рт.ст.</div>
+      </div>
+      <div class="bp-meta">
+        <div class="bp-pulse">
+          <div class="pulse-dot"></div>
+          <span id="lastPulse">— уд/хв</span>
+        </div>
+        <div class="bp-status-badge badge-optimal" id="statusBadge">Немає даних</div>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="chart-section">
+      <div class="section-header">
+        <span class="section-title">Тижневий тренд</span>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#e05c5c"></div>СТ</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#5c8fe0"></div>ДТ</div>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="chartCanvas"></canvas>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-value" id="avgSys" style="color:var(--accent)">—</div>
+        <div class="stat-label">Сер. систол.</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="avgDia" style="color:var(--accent2)">—</div>
+        <div class="stat-label">Сер. діастол.</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="totalCount" style="color:var(--accent3)">0</div>
+        <div class="stat-label">Вимірів</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ADD TAB -->
+  <div class="tab-content" id="tab-add">
+    <div class="add-section">
+      <div class="section-header" style="margin-bottom:20px">
+        <span class="section-title">Новий вимір</span>
+      </div>
+
+      <div class="form-grid">
+        <div class="input-wrap">
+          <label class="input-label">СИСТОЛ.</label>
+          <input type="number" id="inSys" placeholder="120" min="60" max="250">
+        </div>
+        <div class="input-wrap">
+          <label class="input-label">ДІАСТОЛ.</label>
+          <input type="number" id="inDia" placeholder="80" min="40" max="150">
+        </div>
+        <div class="input-wrap">
+          <label class="input-label">ПУЛЬС</label>
+          <input type="number" id="inPulse" placeholder="72" min="30" max="220">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div>
+          <label class="input-label">РУКА</label>
+          <select id="inArm">
+            <option value="ліва">Ліва</option>
+            <option value="права">Права</option>
+          </select>
+        </div>
+        <div>
+          <label class="input-label">ПОЗИЦІЯ</label>
+          <select id="inPosition">
+            <option value="сидячи">Сидячи</option>
+            <option value="лежачи">Лежачи</option>
+            <option value="стоячи">Стоячи</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-bottom:12px">
+        <label class="input-label">САМОПОЧУТТЯ</label>
+        <div class="feelings-row" id="feelingsRow">
+          <button class="feeling-btn" data-val="нормально">😊 Нормально</button>
+          <button class="feeling-btn" data-val="головний біль">🤕 Головний біль</button>
+          <button class="feeling-btn" data-val="запаморочення">😵 Запаморочення</button>
+          <button class="feeling-btn" data-val="слабкість">😓 Слабкість</button>
+          <button class="feeling-btn" data-val="серцебиття">💓 Серцебиття</button>
+          <button class="feeling-btn" data-val="немає симптомів">✓ Без симптомів</button>
+        </div>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <label class="input-label">НОТАТКА</label>
+        <textarea id="inNote" placeholder="Після кави, після фізнавантаження, перед ліками..."></textarea>
+      </div>
+
+      <button class="add-btn" onclick="addRecord()">＋ Зберегти вимір</button>
+    </div>
+  </div>
+
+  <!-- HISTORY TAB -->
+  <div class="tab-content" id="tab-history">
+    <div class="section-header" style="padding: 4px 0 16px">
+      <span class="section-title">Журнал вимірів</span>
+      <button class="export-btn" style="width:auto;padding:6px 14px;margin:0;font-size:11px" onclick="exportCSV()">
+        ↓ Експорт CSV
+      </button>
+    </div>
+    <div id="recordsList">
+      <div class="empty-state">
+        <div class="empty-icon">🩺</div>
+        <div class="empty-text">Ще немає вимірів.<br>Додайте перший запис!</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INFO TAB -->
+  <div class="tab-content" id="tab-info">
+    <div class="chart-section" style="margin-bottom:20px">
+      <div class="section-header">
+        <span class="section-title">Класифікація АТ (ВООЗ)</span>
+      </div>
+      <table class="bp-table">
+        <tr>
+          <th>Категорія</th>
+          <th>Систол.</th>
+          <th>Діастол.</th>
+        </tr>
+        <tr>
+          <td><span class="color-dot" style="background:#5c8fe0"></span>Оптимальний</td>
+          <td>&lt;120</td><td>&lt;80</td>
+        </tr>
+        <tr>
+          <td><span class="color-dot" style="background:#5ce0b0"></span>Нормальний</td>
+          <td>120–129</td><td>80–84</td>
+        </tr>
+        <tr>
+          <td><span class="color-dot" style="background:#a0e05c"></span>Високий норм.</td>
+          <td>130–139</td><td>85–89</td>
+        </tr>
+        <tr>
+          <td><span class="color-dot" style="background:#e0c05c"></span>АГ 1 ступ.</td>
+          <td>140–159</td><td>90–99</td>
+        </tr>
+        <tr>
+          <td><span class="color-dot" style="background:#e07a5c"></span>АГ 2 ступ.</td>
+          <td>160–179</td><td>100–109</td>
+        </tr>
+        <tr>
+          <td><span class="color-dot" style="background:#e05c5c"></span>АГ 3 ступ.</td>
+          <td>≥180</td><td>≥110</td>
+        </tr>
+        <tr>
+          <td><span class="color-dot" style="background:#e05c8a"></span>Ізол. систол.</td>
+          <td>≥140</td><td>&lt;90</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="advice-grid">
+      <div class="advice-card">
+        <div class="advice-icon">⏰</div>
+        <div>
+          <div class="advice-title">Коли вимірювати</div>
+          <div class="advice-text">Вранці (6–9 год) та ввечері (18–21 год). Після 5 хв спокою, не після їжі/кави/куріння протягом 30 хв.</div>
+        </div>
+      </div>
+      <div class="advice-card">
+        <div class="advice-icon">🫱</div>
+        <div>
+          <div class="advice-title">Правильна техніка</div>
+          <div class="advice-text">Рука на рівні серця, манжета на 2 см вище ліктьового згину. Спина пряма, ноги не схрещені.</div>
+        </div>
+      </div>
+      <div class="advice-card">
+        <div class="advice-icon">📊</div>
+        <div>
+          <div class="advice-title">Два виміри</div>
+          <div class="advice-text">Рекомендується робити 2 виміри з інтервалом 1–2 хвилини та записувати середнє значення.</div>
+        </div>
+      </div>
+      <div class="advice-card">
+        <div class="advice-icon">💊</div>
+        <div>
+          <div class="advice-title">Прийом ліків</div>
+          <div class="advice-text">Якщо ви приймаєте гіпотензивні препарати — вимірюйте АТ до прийому ранкової дози.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="reminder-section">
+      <div class="section-header" style="margin-bottom:0">
+        <span class="section-title">Налаштування</span>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Нагадування вранці</div>
+          <div class="toggle-sub">08:00 — час виміру</div>
+        </div>
+        <div class="toggle" id="toggleMorning" onclick="toggleSwitch(this)"></div>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Нагадування ввечері</div>
+          <div class="toggle-sub">20:00 — час виміру</div>
+        </div>
+        <div class="toggle" id="toggleEvening" onclick="toggleSwitch(this)"></div>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Попередження при критичному АТ</div>
+          <div class="toggle-sub">≥180/110 або ≤90/60</div>
+        </div>
+        <div class="toggle on" id="toggleAlert" onclick="toggleSwitch(this)"></div>
+      </div>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:12px">
+      <div class="section-title" style="margin-bottom:14px">РЕЗЕРВНА КОПІЯ</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.5">
+        Зберігайте резервну копію перед очищенням кешу або переустановкою застосунку
+      </div>
+      <button class="export-btn" onclick="exportJSON()" style="margin-bottom:8px">
+        📤 Зберегти резервну копію (JSON)
+      </button>
+      <button class="export-btn" onclick="document.getElementById('importFile').click()" style="margin-bottom:8px;border-color:rgba(92,143,224,0.3);color:var(--accent2)">
+        📥 Відновити з резервної копії
+      </button>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)">
+      <button class="export-btn" onclick="exportCSV()">
+        🏥 Експорт CSV (для лікаря)
+      </button>
+    </div>
+    <button class="export-btn" onclick="clearAll()" style="color:var(--danger);border-color:rgba(224,92,92,0.2)">
+      🗑 Очистити всі дані
+    </button>
+  </div>
+
+</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <button class="nav-item active" onclick="switchTab('home', this)">
+    <span class="nav-icon">📊</span>
+    <span>Огляд</span>
+  </button>
+  <button class="nav-item" onclick="switchTab('add', this)">
+    <span class="nav-icon">＋</span>
+    <span>Вимір</span>
+  </button>
+  <button class="nav-item" onclick="switchTab('history', this)">
+    <span class="nav-icon">📋</span>
+    <span>Журнал</span>
+  </button>
+  <button class="nav-item" onclick="switchTab('info', this)">
+    <span class="nav-icon">ℹ️</span>
+    <span>Поради</span>
+  </button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let records = JSON.parse(localStorage.getItem('bp_records') || '[]');
+  let selectedFeelings = [];
+
+  // Header date
+  const now = new Date();
+  document.getElementById('headerDate').innerHTML =
+    now.toLocaleDateString('uk-UA', {weekday:'long'}) + '<br>' +
+    now.toLocaleDateString('uk-UA', {day:'numeric', month:'long', year:'numeric'});
+
+  // Tab switch
+  function switchTab(name, el) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    el.classList.add('active');
+    if (name === 'home') renderHome();
+    if (name === 'history') renderHistory();
+  }
+
+  // Feelings
+  document.querySelectorAll('.feeling-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = btn.dataset.val;
+      if (selectedFeelings.includes(val)) {
+        selectedFeelings = selectedFeelings.filter(f => f !== val);
+        btn.classList.remove('active');
+      } else {
+        selectedFeelings.push(val);
+        btn.classList.add('active');
+      }
+    });
+  });
+
+  // BP classification
+  function classifyBP(sys, dia) {
+    if (sys >= 180 || dia >= 110) return { label: 'Критичний!', cls: 'badge-critical' };
+    if (sys >= 160 || dia >= 100) return { label: 'АГ 2 ступ.', cls: 'badge-high' };
+    if (sys >= 140 || dia >= 90)  return { label: 'АГ 1 ступ.', cls: 'badge-elevated' };
+    if (sys >= 130 || dia >= 85)  return { label: 'Вис. норм.', cls: 'badge-normal' };
+    if (sys >= 120 || dia >= 80)  return { label: 'Нормальний', cls: 'badge-normal' };
+    if (sys < 90  || dia < 60)    return { label: 'Низький', cls: 'badge-normal' };
+    return { label: 'Оптимальний', cls: 'badge-optimal' };
+  }
+
+  function getLineColor(sys, dia) {
+    if (sys >= 160 || dia >= 100) return '#e05c5c';
+    if (sys >= 140 || dia >= 90)  return '#e0c05c';
+    if (sys >= 130 || dia >= 85)  return '#a0e05c';
+    return '#5ce0b0';
+  }
+
+  // Add record
+  function addRecord() {
+    const sys = parseInt(document.getElementById('inSys').value);
+    const dia = parseInt(document.getElementById('inDia').value);
+    const pulse = parseInt(document.getElementById('inPulse').value) || null;
+    const arm = document.getElementById('inArm').value;
+    const position = document.getElementById('inPosition').value;
+    const note = document.getElementById('inNote').value.trim();
+
+    if (!sys || !dia || sys < 60 || sys > 250 || dia < 40 || dia > 150) {
+      showToast('⚠️ Введіть коректні значення АТ');
+      return;
+    }
+
+    const record = {
+      id: Date.now(),
+      ts: new Date().toISOString(),
+      sys, dia, pulse,
+      arm, position,
+      feelings: [...selectedFeelings],
+      note
+    };
+
+    records.unshift(record);
+    localStorage.setItem('bp_records', JSON.stringify(records));
+
+    // Reset form
+    document.getElementById('inSys').value = '';
+    document.getElementById('inDia').value = '';
+    document.getElementById('inPulse').value = '';
+    document.getElementById('inNote').value = '';
+    selectedFeelings = [];
+    document.querySelectorAll('.feeling-btn').forEach(b => b.classList.remove('active'));
+
+    const cls = classifyBP(sys, dia);
+    showToast('✓ Збережено · ' + sys + '/' + dia + ' мм рт.ст. · ' + cls.label);
+
+    // Critical alert
+    if ((sys >= 180 || dia >= 110) && document.getElementById('toggleAlert').classList.contains('on')) {
+      setTimeout(() => showToast('🚨 УВАГА: Критичний АТ! Зверніться до лікаря'), 1500);
+    }
+
+    renderHome();
+    switchTab('home', document.querySelector('.nav-item'));
+    document.querySelector('.nav-item').classList.add('active');
+    document.querySelectorAll('.nav-item').forEach((n,i) => { if(i!==0) n.classList.remove('active'); });
+  }
+
+  // Render home
+  function renderHome() {
+    if (records.length === 0) {
+      document.getElementById('lastSys').textContent = '—';
+      document.getElementById('lastDia').textContent = '—';
+      document.getElementById('lastPulse').textContent = '— уд/хв';
+      document.getElementById('statusBadge').className = 'bp-status-badge badge-optimal';
+      document.getElementById('statusBadge').textContent = 'Немає даних';
+      document.getElementById('avgSys').textContent = '—';
+      document.getElementById('avgDia').textContent = '—';
+      document.getElementById('totalCount').textContent = '0';
+      drawChart([]);
+      return;
+    }
+
+    const last = records[0];
+    document.getElementById('lastSys').textContent = last.sys;
+    document.getElementById('lastDia').textContent = last.dia;
+    document.getElementById('lastPulse').textContent = (last.pulse || '—') + ' уд/хв';
+
+    const cls = classifyBP(last.sys, last.dia);
+    const badge = document.getElementById('statusBadge');
+    badge.className = 'bp-status-badge ' + cls.cls;
+    badge.textContent = cls.label;
+
+    // Status card left border color
+    const card = document.getElementById('statusCard');
+    card.querySelector('::before');
+
+    // Averages (last 7)
+    const recent = records.slice(0, Math.min(7, records.length));
+    const avgS = Math.round(recent.reduce((s,r)=>s+r.sys,0)/recent.length);
+    const avgD = Math.round(recent.reduce((s,r)=>s+r.dia,0)/recent.length);
+    document.getElementById('avgSys').textContent = avgS;
+    document.getElementById('avgDia').textContent = avgD;
+    document.getElementById('totalCount').textContent = records.length;
+
+    drawChart(recent.slice().reverse());
+  }
+
+  // Draw chart
+  function drawChart(data) {
+    const canvas = document.getElementById('chartCanvas');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = 100 * dpr;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = '100px';
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    const W = rect.width, H = 100;
+
+    ctx.clearRect(0, 0, W, H);
+
+    if (data.length < 2) {
+      ctx.fillStyle = '#3d4460';
+      ctx.font = '12px DM Mono, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('Потрібно мінімум 2 виміри', W/2, H/2);
+      return;
+    }
+
+    const allVals = data.flatMap(r => [r.sys, r.dia]);
+    const minV = Math.min(...allVals) - 10;
+    const maxV = Math.max(...allVals) + 10;
+    const scaleY = v => H - 8 - ((v - minV) / (maxV - minV)) * (H - 16);
+    const scaleX = i => 16 + (i / (data.length - 1)) * (W - 32);
+
+    // Grid lines
+    ctx.strokeStyle = '#252a3a';
+    ctx.lineWidth = 1;
+    [120, 140, 160].forEach(v => {
+      if (v > minV && v < maxV) {
+        const y = scaleY(v);
+        ctx.beginPath();
+        ctx.setLineDash([4, 4]);
+        ctx.moveTo(0, y); ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+    });
+    ctx.setLineDash([]);
+
+    // Draw lines
+    [[data.map(r=>r.sys), '#e05c5c'], [data.map(r=>r.dia), '#5c8fe0']].forEach(([vals, color]) => {
+      // Gradient fill
+      const grad = ctx.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, color + '22');
+      grad.addColorStop(1, color + '00');
+
+      ctx.beginPath();
+      vals.forEach((v, i) => {
+        i === 0 ? ctx.moveTo(scaleX(i), scaleY(v)) : ctx.lineTo(scaleX(i), scaleY(v));
+      });
+      ctx.lineTo(scaleX(vals.length-1), H);
+      ctx.lineTo(scaleX(0), H);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // Line
+      ctx.beginPath();
+      vals.forEach((v, i) => {
+        i === 0 ? ctx.moveTo(scaleX(i), scaleY(v)) : ctx.lineTo(scaleX(i), scaleY(v));
+      });
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Dots
+      vals.forEach((v, i) => {
+        ctx.beginPath();
+        ctx.arc(scaleX(i), scaleY(v), 3, 0, Math.PI*2);
+        ctx.fillStyle = color;
+        ctx.fill();
+      });
+    });
+
+    // X labels
+    ctx.fillStyle = '#6b7394';
+    ctx.font = '9px DM Mono, monospace';
+    ctx.textAlign = 'center';
+    data.forEach((r, i) => {
+      const d = new Date(r.ts);
+      const label = d.getDate() + '.' + String(d.getMonth()+1).padStart(2,'0');
+      ctx.fillText(label, scaleX(i), H - 1);
+    });
+  }
+
+  // Render history
+  function renderHistory() {
+    const list = document.getElementById('recordsList');
+    if (records.length === 0) {
+      list.innerHTML = '<div class="empty-state"><div class="empty-icon">🩺</div><div class="empty-text">Ще немає вимірів.<br>Додайте перший запис!</div></div>';
+      return;
+    }
+
+    list.innerHTML = records.map(r => {
+      const d = new Date(r.ts);
+      const dateStr = d.toLocaleDateString('uk-UA', {day:'numeric', month:'short'});
+      const timeStr = d.toLocaleTimeString('uk-UA', {hour:'2-digit', minute:'2-digit'});
+      const cls = classifyBP(r.sys, r.dia);
+      const lineColor = getLineColor(r.sys, r.dia);
+      const feelings = r.feelings?.length ? r.feelings.join(', ') : '';
+      const metaParts = [];
+      if (r.pulse) metaParts.push('💓 ' + r.pulse);
+      if (r.arm) metaParts.push('🫱 ' + r.arm);
+      if (r.position) metaParts.push(r.position);
+      if (feelings) metaParts.push(feelings);
+
+      return `<div class="record-item" style="border-left-color:${lineColor};border-left-width:3px">
+        <div class="record-time">${dateStr}<br>${timeStr}</div>
+        <div class="record-bp">
+          <div class="record-values" style="color:${lineColor}">${r.sys}<span style="color:var(--text-dim);font-size:14px">/</span>${r.dia}</div>
+          ${metaParts.length ? `<div class="record-meta">${metaParts.map(p=>`<span>${p}</span>`).join('')}</div>` : ''}
+          ${r.note ? `<div class="record-note">"${r.note}"</div>` : ''}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+          <span class="bp-status-badge ${cls.cls}" style="font-size:9px;padding:3px 7px">${cls.label}</span>
+          <button class="record-delete" onclick="deleteRecord(${r.id})">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function deleteRecord(id) {
+    records = records.filter(r => r.id !== id);
+    localStorage.setItem('bp_records', JSON.stringify(records));
+    renderHistory();
+    renderHome();
+    showToast('🗑 Запис видалено');
+  }
+
+  function clearAll() {
+    if (confirm('Видалити всі записи? Цю дію неможливо скасувати.')) {
+      records = [];
+      localStorage.setItem('bp_records', JSON.stringify(records));
+      renderHome();
+      renderHistory();
+      showToast('Дані очищено');
+    }
+  }
+
+  function exportCSV() {
+    if (records.length === 0) { showToast('Немає даних для експорту'); return; }
+    const header = 'Дата,Час,Систолічний,Діастолічний,Пульс,Рука,Позиція,Самопочуття,Нотатка';
+    const rows = records.map(r => {
+      const d = new Date(r.ts);
+      return [
+        d.toLocaleDateString('uk-UA'),
+        d.toLocaleTimeString('uk-UA', {hour:'2-digit',minute:'2-digit'}),
+        r.sys, r.dia,
+        r.pulse || '',
+        r.arm || '',
+        r.position || '',
+        (r.feelings || []).join('; '),
+        r.note || ''
+      ].map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',');
+    });
+    const csv = '\uFEFF' + header + '\n' + rows.join('\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'arterialnyi_tysk_' + new Date().toISOString().slice(0,10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('📥 CSV файл завантажено');
+  }
+
+  function exportJSON() {
+    if (records.length === 0) { showToast('Немає даних для збереження'); return; }
+    const data = { version: 1, exported: new Date().toISOString(), records };
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'puls_backup_' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ Резервну копію збережено (' + records.length + ' записів)');
+  }
+
+  function importJSON(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const data = JSON.parse(e.target.result);
+        // Support both raw array and {records:[...]} format
+        const imported = Array.isArray(data) ? data : (data.records || []);
+        if (!imported.length) { showToast('⚠️ Файл не містить записів'); return; }
+        // Merge: keep existing + add new (no duplicates by id)
+        const existingIds = new Set(records.map(r => r.id));
+        const newRecs = imported.filter(r => !existingIds.has(r.id));
+        records = [...records, ...newRecs].sort((a,b) => new Date(b.ts) - new Date(a.ts));
+        localStorage.setItem('bp_records', JSON.stringify(records));
+        renderHome();
+        renderHistory();
+        showToast('✅ Відновлено: +' + newRecs.length + ' записів');
+      } catch {
+        showToast('❌ Помилка: невірний формат файлу');
+      }
+    };
+    reader.readAsText(file);
+    input.value = '';
+  }
+
+  function toggleSwitch(el) {
+    el.classList.toggle('on');
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // Init
+  renderHome();
+
+  // Resize redraw
+  window.addEventListener('resize', () => {
+    if (document.getElementById('tab-home').classList.contains('active')) {
+      const recent = records.slice(0, Math.min(7, records.length)).slice().reverse();
+      drawChart(recent);
+    }
+  });
+
+  
+  renderHome();
+
+  window.addEventListener('resize', () => {
+    if (document.getElementById('tab-home').classList.contains('active')) {
+      const recent = records.slice(0, Math.min(7, records.length)).slice().reverse();
+      drawChart(recent);
+    }
+  });
+</script>
+
+<script>
+  // Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+
+  // Install banner
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    showInstallBanner('android');
+  });
+
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+  if (isIos && !isStandalone && !localStorage.getItem('ios_hint')) {
+    setTimeout(() => showInstallBanner('ios'), 2000);
+  }
+
+  function showInstallBanner(type) {
+    if (document.getElementById('installBanner')) return;
+    const b = document.createElement('div');
+    b.id = 'installBanner';
+    b.style.cssText = 'position:fixed;bottom:72px;left:12px;right:12px;background:#1c2030;border:1px solid rgba(224,92,92,.3);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;z-index:300;box-shadow:0 8px 32px rgba(0,0,0,.6);animation:slideUp .3s ease;font-family:DM Sans,sans-serif';
+    const ico = '<img src="icon-192.png" width="40" height="40" style="border-radius:10px;flex-shrink:0">';
+    if (type === 'android') {
+      b.innerHTML = ico + '<div style="flex:1"><div style="font-weight:600;font-size:13px;margin-bottom:3px">Встановити «Пульс»</div><div style="font-size:11px;color:#6b7394;line-height:1.4">Додайте на робочий стіл — без браузера</div></div><div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0"><button onclick="doInstall()" style="background:#e05c5c;border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:600;padding:7px 12px;cursor:pointer">Додати</button><button onclick="closeBanner()" style="background:none;border:none;color:#6b7394;font-size:11px;cursor:pointer">Пізніше</button></div>';
+    } else {
+      b.innerHTML = ico + '<div style="flex:1"><div style="font-weight:600;font-size:13px;margin-bottom:3px">Додайте на екран «Додому»</div><div style="font-size:11px;color:#6b7394;line-height:1.5">Натисніть <b style="color:#5c8fe0">⎙ Поділитися</b> → «На екран "Додому"»</div></div><button onclick="closeBanner(true)" style="background:none;border:1px solid #252a3a;border-radius:8px;color:#6b7394;font-size:16px;padding:4px 8px;cursor:pointer;flex-shrink:0">✕</button>';
+      localStorage.setItem('ios_hint','1');
+    }
+    document.body.appendChild(b);
+  }
+
+  function doInstall() {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(r => {
+        if (r.outcome === 'accepted') showToast('🎉 «Пульс» додано на робочий стіл!');
+        deferredPrompt = null; closeBanner();
+      });
+    }
+  }
+
+  function closeBanner() {
+    const b = document.getElementById('installBanner');
+    if (b) { b.style.opacity='0'; b.style.transform='translateY(8px)'; b.style.transition='all .2s'; setTimeout(()=>b.remove(),200); }
+  }
+
+  window.addEventListener('appinstalled', () => { closeBanner(); showToast('🎉 Встановлено!'); });
+</script>
+<style>
+  @keyframes slideUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+</style>
+</body>
+</html>
